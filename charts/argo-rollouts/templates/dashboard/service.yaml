@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
   labels:
     app.kubernetes.io/component: {{ .Values.dashboard.component }}
-    {{- include "argo-rollouts.labels" . | nindent 4 }}
+    # {{- include "argo-rollouts.labels" . | nindent 4 }}
     {{- with .Values.dashboard.service.labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -40,5 +40,5 @@ spec:
     {{- end }}
   selector:
     app.kubernetes.io/component: {{ .Values.dashboard.component }}
-    {{- include "argo-rollouts.selectorLabels" . | nindent 4 }}
+    # {{- include "argo-rollouts.selectorLabels" . | nindent 4 }}
 {{- end }}
