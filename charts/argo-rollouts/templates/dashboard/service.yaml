@@ -18,7 +18,6 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-
   {{- with .Values.dashboard.service.externalIPs }}
   externalIPs: {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -28,14 +27,6 @@ spec:
     {{- end }}
     {{- with .Values.dashboard.service.loadBalancerSourceRanges }}
   loadBalancerSourceRanges: {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- end }}
-  {{- if eq .Values.dashboard.service.type "ClusterIP" }}
-    {{- with .Values.dashboard.service.clusterIP }}
-    clusterIP: {{ . | quote }}
-    {{- end }}
-    {{- with .Values.dashboard.service.clusterIPs }}
-    clusterIPs: {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- end }}
   type: {{ .Values.dashboard.service.type }}
