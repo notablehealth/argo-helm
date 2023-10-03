@@ -58,6 +58,15 @@ spec:
           name: dashboard
         securityContext:
           {{- toYaml .Values.dashboard.containerSecurityContext | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /rollouts
+            port: 3100
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+          timeoutSeconds: 4
         resources:
           {{- toYaml .Values.dashboard.resources | nindent 10 }}
         {{- with .Values.dashboard.volumeMounts }}
