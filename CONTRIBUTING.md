@@ -47,6 +47,8 @@ Any breaking changes to a chart (backwards incompatible) require:
 
 ### New Application Versions
 
+Helm charts are intended to be created for all non-patched releases of Argo CD, Workflows, Rollouts, and Events. Associated dependencies, such as Redis, will use the version recommended by the associated release.
+
 When selecting new application versions ensure you make the following changes:
 
 * `values.yaml`: Bump all instances of the container image version
@@ -122,7 +124,7 @@ helm install charts/argo-workflows -n argo
 argo version
 ```
 
-Follow [these](https://argoproj.github.io/argo-workflows/quick-start/#submitting-an-example-workflow) instructions for running a hello world workflow.
+Follow [these](https://argo-workflows.readthedocs.io/en/stable/quick-start/#submitting-an-example-workflow) instructions for running a hello world workflow.
 
 ### Testing Argo CD Changes
 

@@ -1,9 +1,9 @@
 apiVersion: v2
-appVersion: v2.8.4
+appVersion: v2.11.2
 kubeVersion: ">=1.23.0-0"
 description: A Helm chart for Argo CD, a declarative, GitOps continuous delivery tool for Kubernetes.
 name: argo-cd
-version: 5.46.7
+version: 7.1.0
 home: https://github.com/argoproj/argo-helm
 icon: https://argo-cd.readthedocs.io/en/stable/assets/logo.png
 sources:
@@ -18,7 +18,7 @@ maintainers:
     url: https://argoproj.github.io/
 dependencies:
   - name: redis-ha
-    version: 4.23.0
+    version: 4.26.1
     repository: https://dandydeveloper.github.io/charts/
     condition: redis-ha.enabled
 annotations:
@@ -26,5 +26,5 @@ annotations:
     fingerprint: 2B8F22F57260EFA67BE1C5824B11F800CD9D2252
     url: https://argoproj.github.io/argo-helm/pgp_keys.asc
   artifacthub.io/changes: |
-    - kind: security
-      description: updated redis dependency to 7.0.13-alpine to fix CVE-2022-48174
+    - kind: added
+      description: Add support for IPv4/IPv6 dual-stack networking.

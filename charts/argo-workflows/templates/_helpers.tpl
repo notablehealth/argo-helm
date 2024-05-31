@@ -79,6 +79,9 @@ helm.sh/chart: {{ include "argo-workflows.chart" .context }}
 {{ include "argo-workflows.selectorLabels" (dict "context" .context "component" .component "name" .name) }}
 app.kubernetes.io/managed-by: {{ .context.Release.Service }}
 app.kubernetes.io/part-of: argo-workflows
+{{- with .context.Values.commonLabels }}
+{{ toYaml .}}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -93,6 +96,13 @@ app.kubernetes.io/instance: {{ .context.Release.Name }}
 app.kubernetes.io/component: {{ .component }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create the name of the controller configMap
+*/}}
+{{- define "argo-workflows.controller.config-map.name" -}}
+{{- .Values.controller.configMap.name | default (printf "%s-%s" (include "argo-workflows.controller.fullname" .) "configmap") | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 
 {{/*
 Create the name of the server service account to use
@@ -179,3 +189,22 @@ Return the appropriate apiVersion for GKE resources
 {{- print "cloud.google.com/v1beta1" -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Return the appropriate apiVersion for monitoring CRDs
+*/}}
+{{- define "argo-workflows.apiVersions.monitoring" -}}
+{{- if .Values.apiVersionOverrides.monitoring -}}
+{{- print .Values.apiVersionOverrides.monitoring -}}
+{{- else -}}
+{{- print "monitoring.coreos.com/v1" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Expand the namespace of the release.
+Allows overriding it for multi-namespace deployments in combined charts.
+*/}}
+{{- define "argo-workflows.namespace" -}}
+{{- default .Release.Namespace .Values.namespaceOverride | trunc 63 | trimSuffix "-" -}}
+{{- end }}
