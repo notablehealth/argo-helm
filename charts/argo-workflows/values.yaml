@@ -16,7 +16,7 @@ crds:
   # -- Annotations to be added to all CRDs
   annotations: {}
 
-# -- Create clusterroles that extend existing clusterroles to interact with argo-cd crds
+# -- Create ClusterRoles that extend existing ClusterRoles to interact with Argo Workflows CRDs.
 ## Ref: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles
 createAggregateRoles: true
 
@@ -69,10 +69,16 @@ workflow:
     # -- Adds Role and RoleBinding for the above specified service account to be able to run workflows.
     # A Role and Rolebinding pair is also created for each namespace in controller.workflowNamespaces (see below)
     create: true
+    # -- Allows permissions for the Argo Agent. Only required if using http/plugin templates
+    agentPermissions: false
+    # -- Allows permissions for the Argo Artifact GC pod. Only required if using artifact gc
+    artifactGC: false
     # -- Extra service accounts to be added to the RoleBinding
     serviceAccounts: []
       # - name: my-service-account
       #   namespace: my-namespace
+    # -- Additional rules for the service account that runs the workflows.
+    rules: []
 
 controller:
   image:
@@ -106,6 +112,8 @@ controller:
     create: true
     # -- ConfigMap name
     name: ""
+    # -- ConfigMap annotations
+    annotations: {}
 
   # -- Limits the maximum number of incomplete workflows in a namespace
   namespaceParallelism:
@@ -125,6 +133,8 @@ controller:
     enabled: false
     # -- Path is the path where metrics are emitted. Must start with a "/".
     path: /metrics
+    # -- Frequency at which prometheus scrapes metrics
+    interval: 30s
     # -- Port is the port where metrics are emitted
     port: 9090
     # -- How often custom metrics are cleared from memory
@@ -141,6 +151,9 @@ controller:
     servicePortName: metrics
     # -- Flag to enable headless service
     headlessService: false
+    # -- When true, honorLabels preserves the metric’s labels when they collide with the target’s labels.
+    ## Ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#honorlabels
+    honorLabels: false
     # -- ServiceMonitor relabel configs to apply to samples before scraping
     ## Ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig
     relabelings: []
@@ -229,6 +242,8 @@ controller:
     enabled: false
     # -- telemetry path
     path: /telemetry
+    # -- Frequency at which prometheus scrapes telemetry data
+    interval: 30s
     # -- telemetry container port
     port: 8081
     # -- How often custom metrics are cleared from memory
@@ -295,6 +310,8 @@ controller:
   serviceAnnotations: {}
   # -- Optional labels to add to the controller Service
   serviceLabels: {}
+  # -- The class of the load balancer implementation
+  loadBalancerClass: ""
   # -- Source ranges to allow access to service from. Only applies to service type `LoadBalancer`
   loadBalancerSourceRanges: []
 
@@ -384,6 +401,12 @@ controller:
   nodeEvents:
     # -- Enable to emit events on node completion.
     ## This can take up a lot of space in k8s (typically etcd) resulting in errors when trying to create new events:
+    ## "Unable to create audit event: etcdserver: mvcc: database space exceeded"
+    enabled: true
+
+  workflowEvents:
+    # -- Enable to emit events on workflow status changes.
+    ## This can take up a lot of space in k8s (typically etcd), resulting in errors when trying to create new events:
     ## "Unable to create audit event: etcdserver: mvcc: database space exceeded"
     enabled: true
 
@@ -506,6 +529,8 @@ server:
   serviceAnnotations: {}
   # -- Optional labels to add to the UI Service
   serviceLabels: {}
+  # -- The class of the load balancer implementation
+  loadBalancerClass: ""
   # -- Static IP address to assign to loadBalancer service type `LoadBalancer`
   loadBalancerIP: ""
   # -- Source ranges to allow access to service from. Only applies to service type `LoadBalancer`
@@ -608,7 +633,7 @@ server:
   volumes: []
 
   ## Ingress configuration.
-  # ref: https://kubernetes.io/docs/user-guide/ingress/
+  # ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
   ingress:
     # -- Enable an ingress resource
     enabled: false
@@ -694,7 +719,7 @@ server:
 
   # SSO configuration when SSO is specified as a server auth mode.
   sso:
-    # -- Create SSO configuration. If you set `true` , please also set `.Values.server.authMode` as `sso`.
+    # -- Create SSO configuration. If you set `true` , please also set `.Values.server.authModes` as `sso`.
     enabled: false
     # -- The root URL of the OIDC identity provider
     issuer: https://accounts.google.com
@@ -747,6 +772,33 @@ server:
   # -- Enables init containers to be added to the server deployment
   extraInitContainers: []
 
+  # -- Specify postStart and preStop lifecycle hooks for server container
+  lifecycle: {}
+
+  # -- terminationGracePeriodSeconds for container lifecycle hook
+  terminationGracePeriodSeconds: 30
+
+  ## livenessProbe for server
+  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+  livenessProbe:
+    # -- Enable Kubernetes liveness probe for server
+    enabled: false
+    httpGet:
+      # -- Http port to use for the liveness probe
+      port: 2746
+      # -- Http path to use for the liveness probe
+      path: /
+    # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
+    failureThreshold: 3
+    # -- Number of seconds after the container has started before [probe] is initiated
+    initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the [probe]
+    periodSeconds: 10
+    # -- Number of seconds after which the [probe] times out
+    timeoutSeconds: 1
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    successThreshold: 1
+
 # -- Array of extra K8s manifests to deploy
 extraObjects: []
   # - apiVersion: secrets-store.csi.x-k8s.io/v1
@@ -789,6 +841,9 @@ artifactRepository:
     # secretKeySecret:
     #   name: "{{ .Release.Name }}-minio"
     #   key: secretkey
+    # sessionTokenSecret:
+    #   name: "{{ .Release.Name }}-minio"
+    #   key: sessionToken
     # # insecure will disable TLS. Primarily used for minio installs not configured with TLS
     # insecure: false
     # caSecret:

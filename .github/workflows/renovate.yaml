@@ -16,22 +16,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get token
-        uses: actions/create-github-app-token@31c86eb3b33c9b601a1f60f98dcbfd1d70f379b4 # v1.10.3
+        uses: actions/create-github-app-token@21cfef2b496dd8ef5b904c159339626a10ad380e # v1.11.6
         id: get_token
         with:
           app-id: ${{ vars.RENOVATE_APP_ID }}
           private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@042670e39b8d7335e992c3fa526ecbfbd52ef57b # v40.2.2
+        uses: renovatebot/github-action@08ed9fa83e24bfe6222557f9e221395c57972127 # v41.0.16
         with:
           configurationFile: .github/configs/renovate-config.js
           # renovate: datasource=docker depName=ghcr.io/renovatebot/renovate
-          renovate-version: 37.421.4
+          renovate-version: 39.185.0
           token: '${{ steps.get_token.outputs.token }}'
+          mount-docker-socket: true
         env:
           LOG_LEVEL: 'debug'
           RENOVATE_REPOSITORIES: '${{ github.repository }}'

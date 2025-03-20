@@ -116,7 +116,7 @@ Fields to note:
 | crds.annotations | object | `{}` | Annotations to be added to all CRDs |
 | crds.install | bool | `true` | Install and upgrade CRDs |
 | crds.keep | bool | `true` | Keep CRDs on chart uninstall |
-| createAggregateRoles | bool | `true` | Create clusterroles that extend existing clusterroles to interact with argo-cd crds |
+| createAggregateRoles | bool | `true` | Create ClusterRoles that extend existing ClusterRoles to interact with Argo Workflows CRDs. |
 | emissary.images | list | `[]` | The command/args for each image on workflow, needed when the command is not specified and the emissary executor is used. |
 | extraObjects | list | `[]` | Array of extra K8s manifests to deploy |
 | fullnameOverride | string | `nil` | String to fully override "argo-workflows.fullname" template |
@@ -133,7 +133,10 @@ Fields to note:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | workflow.namespace | string | `nil` | Deprecated; use controller.workflowNamespaces instead. |
+| workflow.rbac.agentPermissions | bool | `false` | Allows permissions for the Argo Agent. Only required if using http/plugin templates |
+| workflow.rbac.artifactGC | bool | `false` | Allows permissions for the Argo Artifact GC pod. Only required if using artifact gc |
 | workflow.rbac.create | bool | `true` | Adds Role and RoleBinding for the above specified service account to be able to run workflows. A Role and Rolebinding pair is also created for each namespace in controller.workflowNamespaces (see below) |
+| workflow.rbac.rules | list | `[]` | Additional rules for the service account that runs the workflows. |
 | workflow.rbac.serviceAccounts | list | `[]` | Extra service accounts to be added to the RoleBinding |
 | workflow.serviceAccount.annotations | object | `{}` | Annotations applied to created service account |
 | workflow.serviceAccount.create | bool | `false` | Specifies whether a service account should be created |
@@ -149,6 +152,7 @@ Fields to note:
 | controller.clusterWorkflowTemplates.enabled | bool | `true` | Create a ClusterRole and CRB for the controller to access ClusterWorkflowTemplates. |
 | controller.clusterWorkflowTemplates.serviceAccounts | list | `[]` | Extra service accounts to be added to the ClusterRoleBinding |
 | controller.columns | list | `[]` | Configure Argo Server to show custom [columns] |
+| controller.configMap.annotations | object | `{}` | ConfigMap annotations |
 | controller.configMap.create | bool | `true` | Create a ConfigMap for the controller |
 | controller.configMap.name | string | `""` | ConfigMap name |
 | controller.cronWorkflowWorkers | string | `nil` | Number of cron workflow workers Only valid for 3.5+ |
@@ -167,13 +171,16 @@ Fields to note:
 | controller.kubeConfig | object | `{}` (See [values.yaml]) | Configure when workflow controller runs in a different k8s cluster with the workflow workloads, or needs to communicate with the k8s apiserver using an out-of-cluster kubeconfig secret. |
 | controller.links | list | `[]` | Configure Argo Server to show custom [links] |
 | controller.livenessProbe | object | See [values.yaml] | Configure liveness [probe] for the controller |
+| controller.loadBalancerClass | string | `""` | The class of the load balancer implementation |
 | controller.loadBalancerSourceRanges | list | `[]` | Source ranges to allow access to service from. Only applies to service type `LoadBalancer` |
 | controller.logging.format | string | `"text"` | Set the logging format (one of: `text`, `json`) |
 | controller.logging.globallevel | string | `"0"` | Set the glog logging level |
 | controller.logging.level | string | `"info"` | Set the logging level (one of: `debug`, `info`, `warn`, `error`) |
 | controller.metricsConfig.enabled | bool | `false` | Enables prometheus metrics server |
 | controller.metricsConfig.headlessService | bool | `false` | Flag to enable headless service |
+| controller.metricsConfig.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
 | controller.metricsConfig.ignoreErrors | bool | `false` | Flag that instructs prometheus to ignore metric emission errors. |
+| controller.metricsConfig.interval | string | `"30s"` | Frequency at which prometheus scrapes metrics |
 | controller.metricsConfig.metricRelabelings | list | `[]` | ServiceMonitor metric relabel configs to apply to samples before ingestion |
 | controller.metricsConfig.metricsTTL | string | `""` | How often custom metrics are cleared from memory |
 | controller.metricsConfig.path | string | `"/metrics"` | Path is the path where metrics are emitted. Must start with a "/". |
@@ -221,6 +228,7 @@ Fields to note:
 | controller.serviceType | string | `"ClusterIP"` | Service type of the controller Service |
 | controller.telemetryConfig.enabled | bool | `false` | Enables prometheus telemetry server |
 | controller.telemetryConfig.ignoreErrors | bool | `false` | Flag that instructs prometheus to ignore metric emission errors. |
+| controller.telemetryConfig.interval | string | `"30s"` | Frequency at which prometheus scrapes telemetry data |
 | controller.telemetryConfig.metricsTTL | string | `""` | How often custom metrics are cleared from memory |
 | controller.telemetryConfig.path | string | `"/telemetry"` | telemetry path |
 | controller.telemetryConfig.port | int | `8081` | telemetry container port |
@@ -232,6 +240,7 @@ Fields to note:
 | controller.volumeMounts | list | `[]` | Additional volume mounts to the controller main container |
 | controller.volumes | list | `[]` | Additional volumes to the controller pod |
 | controller.workflowDefaults | object | `{}` | Default values that will apply to all Workflows from this controller, unless overridden on the Workflow-level. Only valid for 2.7+ |
+| controller.workflowEvents.enabled | bool | `true` | Enable to emit events on workflow status changes. |
 | controller.workflowNamespaces | list | `["default"]` | Specify all namespaces where this workflow controller instance will manage workflows. This controls where the service account and RBAC resources will be created. Only valid when singleNamespace is false. |
 | controller.workflowRestrictions | object | `{}` | Restricts the Workflows that the controller will process. Only valid for 2.9+ |
 | controller.workflowTTLWorkers | string | `nil` | Number of workflow TTL workers |
@@ -301,6 +310,16 @@ Fields to note:
 | server.ingress.pathType | string | `"Prefix"` | Ingress path type. One of `Exact`, `Prefix` or `ImplementationSpecific` |
 | server.ingress.paths | list | `["/"]` | List of ingress paths |
 | server.ingress.tls | list | `[]` | Ingress TLS configuration |
+| server.lifecycle | object | `{}` | Specify postStart and preStop lifecycle hooks for server container |
+| server.livenessProbe.enabled | bool | `false` | Enable Kubernetes liveness probe for server |
+| server.livenessProbe.failureThreshold | int | `3` | Minimum consecutive failures for the [probe] to be considered failed after having succeeded |
+| server.livenessProbe.httpGet.path | string | `"/"` | Http path to use for the liveness probe |
+| server.livenessProbe.httpGet.port | int | `2746` | Http port to use for the liveness probe |
+| server.livenessProbe.initialDelaySeconds | int | `10` | Number of seconds after the container has started before [probe] is initiated |
+| server.livenessProbe.periodSeconds | int | `10` | How often (in seconds) to perform the [probe] |
+| server.livenessProbe.successThreshold | int | `1` | Minimum consecutive successes for the [probe] to be considered successful after having failed |
+| server.livenessProbe.timeoutSeconds | int | `1` | Number of seconds after which the [probe] times out |
+| server.loadBalancerClass | string | `""` | The class of the load balancer implementation |
 | server.loadBalancerIP | string | `""` | Static IP address to assign to loadBalancer service type `LoadBalancer` |
 | server.loadBalancerSourceRanges | list | `[]` | Source ranges to allow access to service from. Only applies to service type `LoadBalancer` |
 | server.logging.format | string | `"text"` | Set the logging format (one of: `text`, `json`) |
@@ -334,7 +353,7 @@ Fields to note:
 | server.sso.clientSecret.key | string | `"client-secret"` | Key of a secret to retrieve the app OIDC client secret |
 | server.sso.clientSecret.name | string | `"argo-server-sso"` | Name of a secret to retrieve the app OIDC client secret |
 | server.sso.customGroupClaimName | string | `""` | Override claim name for OIDC groups |
-| server.sso.enabled | bool | `false` | Create SSO configuration. If you set `true` , please also set `.Values.server.authMode` as `sso`. |
+| server.sso.enabled | bool | `false` | Create SSO configuration. If you set `true` , please also set `.Values.server.authModes` as `sso`. |
 | server.sso.filterGroupsRegex | list | `[]` | Filter the groups returned by the OIDC provider |
 | server.sso.insecureSkipVerify | bool | `false` | Skip TLS verification for the HTTP client |
 | server.sso.issuer | string | `"https://accounts.google.com"` | The root URL of the OIDC identity provider |
@@ -345,6 +364,7 @@ Fields to note:
 | server.sso.scopes | list | `[]` | Scopes requested from the SSO ID provider |
 | server.sso.sessionExpiry | string | `""` | Define how long your login is valid for (in hours) |
 | server.sso.userInfoPath | string | `""` | Specify the user info endpoint that contains the groups claim |
+| server.terminationGracePeriodSeconds | int | `30` | terminationGracePeriodSeconds for container lifecycle hook |
 | server.tmpVolume | object | `{"emptyDir":{}}` | Volume to be mounted in Pods for temporary files. |
 | server.tolerations | list | `[]` | [Tolerations] for use with node taints |
 | server.topologySpreadConstraints | list | `[]` | Assign custom [TopologySpreadConstraints] rules to the argo server |
